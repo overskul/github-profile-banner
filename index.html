@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Profile Banner Generator</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    
+    #banner {
+      width: 100%;
+      height: 200px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    
+    .profile-container {
+      display: flex;
+      align-items: center;
+      max-width: 100%;
+    }
+    
+    .profile-image {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .name {
+      font-size: 36px;
+      font-weight: 600;
+      margin-left: 24px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="banner">
+    <div class="profile-container">
+      <img class="profile-image" id="profile-img" src="" alt="GitHub Profile">
+      <div class="name" id="username"></div>
+    </div>
+  </div>
+  
+  <script>
+    // Parse URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const username = urlParams.get('username') || 'github';
+    const bgColor = urlParams.get('bg') || '0366d6';
+    const textColor = urlParams.get('color') || 'ffffff';
+    const pattern = urlParams.get('pattern') || 'none';
+    const width = urlParams.get('width') || '100%';
+    
+    // Set banner width
+    const bannerEl = document.getElementById('banner');
+    bannerEl.style.width = width.includes('%') ? width : `${width}px`;
+    
+    // Set background color
+    bannerEl.style.backgroundColor = `#${bgColor}`;
+    
+    // Add pattern if requested
+    if (pattern !== 'none') {
+      if (pattern === 'dots') {
+        bannerEl.style.backgroundImage = `radial-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px)`;
+        bannerEl.style.backgroundSize = '20px 20px';
+      } else if (pattern === 'lines') {
+        bannerEl.style.backgroundImage = `linear-gradient(45deg, rgba(255, 255, 255, 0.1) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.1) 75%, transparent 75%, transparent)`;
+        bannerEl.style.backgroundSize = '50px 50px';
+      } else if (pattern === 'waves') {
+        const waveSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:absolute; top:0; left:0; z-index:0">
+                    <defs>
+                        <pattern id="wave" width="200" height="50" patternUnits="userSpaceOnUse">
+                            <path fill="none" stroke="rgba(255, 255, 255, 0.2)" stroke-width="2" d="M0,25 C50,0 150,50 200,25 L200,50 L0,50 Z" />
+                        </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#wave)" />
+                </svg>`;
+        
+        bannerEl.innerHTML = waveSvg + bannerEl.innerHTML;
+      }
+    }
+    
+    // Set text color
+    document.getElementById('username').style.color = `#${textColor}`;
+    
+    // Fetch GitHub user data
+    async function fetchGitHubUser() {
+      try {
+        const response = await fetch(`https://api.github.com/users/${username}`);
+        if (!response.ok) throw new Error('User not found');
+        
+        const userData = await response.json();
+        
+        // Set profile image and name
+        document.getElementById('profile-img').src = userData.avatar_url;
+        document.getElementById('username').textContent = userData.name || userData.login;
+        
+        // If this is an API request (not a browser viewing), convert to SVG
+        if (urlParams.get('format') === 'svg') {
+          convertToSVG(userData);
+        }
+      } catch (error) {
+        console.error('Error fetching GitHub user:', error);
+        // Set fallback image and name
+        document.getElementById('profile-img').src = 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
+        document.getElementById('username').textContent = username;
+        
+        if (urlParams.get('format') === 'svg') {
+          convertToSVG({
+            avatar_url: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
+            name: username
+          });
+        }
+      }
+    }
+    
+    function convertToSVG(userData) {
+      // Create an SVG representation of the banner
+      const name = userData.name || userData.login || username;
+      const avatarUrl = userData.avatar_url || 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
+      
+      const patternDefs = pattern === 'lines' ? `
+                <defs>
+                    <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="50" height="50">
+                        <path d="M-10,10 l20,-20 M0,50 l50,-50 M40,60 l20,-20" 
+                              stroke="rgba(255,255,255,0.1)" stroke-width="10" />
+                    </pattern>
+                </defs>` : '';
+      
+      const patternElement = pattern === 'lines' ? '<rect width="100%" height="100%" fill="url(#diagonalHatch)" />' :
+        (pattern === 'dots' ? '<pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.2)"/></pattern><rect width="100%" height="100%" fill="url(#dots)" />' :
+          (pattern === 'waves' ? '<path d="M0,100 C200,50 600,150 800,100" stroke="rgba(255,255,255,0.2)" stroke-width="20" fill="none" />' : ''));
+      
+      const svg = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200">
+                ${patternDefs}
+                <rect width="100%" height="100%" fill="#${bgColor}" />
+                ${patternElement}
+                
+                <!-- Profile Image with Circle Clip -->
+                <defs>
+                    <clipPath id="circleClip">
+                        <circle cx="80" cy="100" r="60" />
+                    </clipPath>
+                </defs>
+                <circle cx="80" cy="100" r="62" fill="white" /> <!-- White border -->
+                <image href="${avatarUrl}" x="20" y="40" width="120" height="120" clip-path="url(#circleClip)" />
+                
+                <!-- Username -->
+                <text x="170" y="115" font-family="Arial" font-size="36px" 
+                      text-anchor="start" fill="#${textColor}" font-weight="600"
+                      filter="drop-shadow(1px 1px 3px rgba(0,0,0,0.2))">
+                    ${name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                </text>
+            </svg>`;
+      
+      document.body.innerHTML = svg;
+    }
+    
+    // Initialize the banner
+    fetchGitHubUser();
+  </script>
+</body>
+
+</html>
